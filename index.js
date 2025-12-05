@@ -65,7 +65,11 @@ async function run() {
       });
       //get
       app.get('/scholarships', async (req, res) => {
-            const result = await scholarshipsCollection.find().toArray();
+            const result = await scholarshipsCollection.find().sort({scholarshipPostDate: -1}).limit(6).toArray();
+            res.send(result); 
+      });
+      app.get('/all-scholarships', async (req, res) => {
+            const result = await scholarshipsCollection.find().sort({scholarshipPostDate: -1}).toArray();
             res.send(result); 
       });
 
