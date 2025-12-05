@@ -3,6 +3,7 @@ const app = express();
 const cors = require('cors');
 require('dotenv').config();
 const port = process.env.PORT || 3000;
+const { MongoClient, ServerApiVersion } = require('mongodb');
 const admin = require("firebase-admin");
 
 const serviceAccount = require("./firebase-adminsdk.json");
@@ -34,11 +35,55 @@ const verifyFirebaseToken = async(req, res, next) => {
 
 
 app.get('/', (req, res) => {
-    res.send('Hello World! This is Assignment-11 Server');
+    res.send('ScholarStream Server is running');
 });
 
-// here we can add more routes and use the verifyFirebaseToken middleware where needed
+const uri = `mongodb+srv://${process.env.MONGODB_USERNAME}:${process.env.MONGODB_PASS}@mycluster.eyaxb6h.mongodb.net/?appName=myCluster`;
 
+const client = new MongoClient(uri, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  }
+});
+
+async function run() {
+  try {
+      await client.connect();
+
+      const myDB = client.db('scholarStreamDB');
+      const scholarshipsCollection = myDB.collection('scholarships');
+
+      // Scholarship related API
+      //post
+      app.post('/scholarships', async (req, res) => {
+          const formDataInfo = req.body;
+          formDataInfo.scholarshipPostDate = new Date();
+            const result = await scholarshipsCollection.insertOne(formDataInfo);
+            res.send(result); 
+      });
+      //get
+      app.get('/scholarships', async (req, res) => {
+            const result = await scholarshipsCollection.find().toArray();
+            res.send(result); 
+      });
+
+
+
+
+
+      
+
+    await client.db("admin").command({ ping: 1 });
+    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+  } finally {
+    // await client.close();
+  }
+}
+run().catch(console.dir);
+
+  
 
 
 
