@@ -3,7 +3,7 @@ const app = express();
 const cors = require('cors');
 require('dotenv').config();
 const port = process.env.PORT || 3000;
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const admin = require("firebase-admin");
 
 const serviceAccount = require("./firebase-adminsdk.json");
@@ -71,6 +71,13 @@ async function run() {
       app.get('/all-scholarships', async (req, res) => {
             const result = await scholarshipsCollection.find().sort({scholarshipPostDate: -1}).toArray();
             res.send(result); 
+      });
+      //findOne
+      app.get('/scholarships/:id', async (req, res) => {
+          const id = req.params.id;
+          const query = { _id: new ObjectId(id) }; 
+            const result = await scholarshipsCollection.findOne(query);
+            res.send(result);
       });
 
 
