@@ -52,6 +52,7 @@ async function run() {
 
     const myDB = client.db("scholarStreamDB");
     const scholarshipsCollection = myDB.collection("scholarships");
+    const applicationsCollection = myDB.collection("applications");
 
     // Scholarship related API
     //post
@@ -103,6 +104,44 @@ async function run() {
       const result = await scholarshipsCollection.deleteOne(query);
       res.send(result);
     });
+
+    // Application related API
+    //post
+    app.post("/applications", async (req, res) => {
+      const applicationData = req.body;
+      applicationData.applicationStatus = "pending";
+      applicationData.applicationDate = new Date();
+      applicationData.paymentStatus = "unpaid";
+      applicationData.feedback = "";
+      const result = await applicationsCollection.insertOne(applicationData);
+      res.send(result);
+    });
+    //get
+    app.get("/applications", async (req, res) => {
+      const userEmail = req.query.email;
+      const query = { userEmail: userEmail };
+      const result = await applicationsCollection
+        .find(query)
+        .sort({ applicationDate: -1 })
+        .toArray();
+      res.send(result);
+    });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     await client.db("admin").command({ ping: 1 });
     console.log(
