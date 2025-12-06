@@ -64,21 +64,33 @@ async function run() {
             res.send(result); 
       });
       //get
-      app.get('/scholarships', async (req, res) => {
+      app.get('/scholarships',verifyFirebaseToken, async (req, res) => {
             const result = await scholarshipsCollection.find().sort({scholarshipPostDate: -1}).limit(6).toArray();
             res.send(result); 
       });
-      app.get('/all-scholarships', async (req, res) => {
+      app.get('/all-scholarships',verifyFirebaseToken, async (req, res) => {
             const result = await scholarshipsCollection.find().sort({scholarshipPostDate: -1}).toArray();
             res.send(result); 
       });
       //findOne
-      app.get('/scholarships/:id', async (req, res) => {
+      app.get('/scholarships/:id',verifyFirebaseToken, async (req, res) => {
           const id = req.params.id;
           const query = { _id: new ObjectId(id) }; 
             const result = await scholarshipsCollection.findOne(query);
             res.send(result);
       });
+    //update
+    app.patch('/scholarships/:id',verifyFirebaseToken, async (req, res) => { 
+        const id = req.params.id;
+      const formData = req.body;
+      // console.log(formData);
+        const query = { _id: new ObjectId(id) };
+        const update = {
+            $set: formData,
+        };
+        const result = await scholarshipsCollection.updateOne(query, update);
+        res.send(result);
+    });
 
 
 
