@@ -3,6 +3,8 @@ const app = express();
 const cors = require("cors");
 require("dotenv").config();
 const port = process.env.PORT || 3000;
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const admin = require("firebase-admin");
 
@@ -117,7 +119,7 @@ async function run() {
       res.send(result);
     });
     //get
-    app.get("/applications", async (req, res) => {
+    app.get("/applications", verifyFirebaseToken, async (req, res) => {
       const userEmail = req.query.email;
       const query = { userEmail: userEmail };
       const result = await applicationsCollection
@@ -127,14 +129,39 @@ async function run() {
       res.send(result);
     });
 
+    //Payments Related API
+    app.post("/create-checkout-session", async (req, res) => {
+      const paymentInfo = req.body;
+      // console.log(paymentInfo);
 
+      const session = await stripe.checkout.sessions.create({
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              product_data: {
+                name: paymentInfo?.universityName,
+                description: paymentInfo?.scholarshipName,
+              },
+              unit_amount: paymentInfo?.applicationFees * 100,
+            },
+            quantity: 1,
+          },
+        ],
+        mode: "payment",
+        customer_email: paymentInfo?.userEmail,
+        metadata: {
+          applicationId: paymentInfo?.scholarshipId,
+          userEmail: paymentInfo?.userEmail,
+          userName: paymentInfo?.userName,
+        },
+        success_url: `${process.env.CLIENT_DOMAIN}/dashboard/payment-success?scholarshipId=${paymentInfo.scholarshipId}`,
+        cancel_url: `${process.env.CLIENT_DOMAIN}/dashboard/payment-cancelled?scholarshipId=${paymentInfo.scholarshipId}&error=Payment+was+declined`,
+      });
+      res.send({ url: session.url });
+    });
 
-
-
-
-
-
-
+    
 
 
 
