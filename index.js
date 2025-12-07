@@ -128,6 +128,28 @@ async function run() {
         .toArray();
       res.send(result);
     });
+    //get all applications
+    app.get("/all-applications", verifyFirebaseToken, async (req, res) => {
+      const result = await applicationsCollection.find().toArray();
+      res.send(result);
+    });
+
+    //delete
+    app.delete("/applications/:id", verifyFirebaseToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await applicationsCollection.deleteOne(query);
+      res.send(result);
+    });
+
+
+
+
+
+
+
+
+
 
     //Payments Related API
     app.post("/create-checkout-session", async (req, res) => {
