@@ -155,13 +155,44 @@ async function run() {
           userEmail: paymentInfo?.userEmail,
           userName: paymentInfo?.userName,
         },
-        success_url: `${process.env.CLIENT_DOMAIN}/dashboard/payment-success?scholarshipId=${paymentInfo.scholarshipId}`,
-        cancel_url: `${process.env.CLIENT_DOMAIN}/dashboard/payment-cancelled?scholarshipId=${paymentInfo.scholarshipId}&error=Payment+was+declined`,
+        success_url: `${process.env.CLIENT_DOMAIN}/dashboard/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.CLIENT_DOMAIN}/dashboard/payment-cancelled?applicationId=${paymentInfo.scholarshipId}&error=Payment+was+declined`,
       });
       res.send({ url: session.url });
     });
 
-    
+    //patch for payment success
+    app.patch("/payment-success", async (req, res) => {
+      const sessionId = req.query.session_id;
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+      console.log("Stripe session:", session);
+
+      if (session.payment_status === "paid") {
+        const applicationId = session.metadata.applicationId;
+        // console.log("Application ID:", applicationId);
+
+        const query = { scholarshipId: applicationId };
+        const update = {
+          $set: {
+            paymentStatus: "paid",
+          },
+        };
+
+        const result = await applicationsCollection.updateOne(query, update);
+
+        return res.send({
+          success: true,
+          application: result,
+          modifiedCount: result.modifiedCount,
+        });
+      }
+      res.send({ success: false, message: "Payment not completed" });
+    });
+
+
+
+
 
 
 
