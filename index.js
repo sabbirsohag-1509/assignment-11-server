@@ -79,15 +79,14 @@ async function run() {
     });
     //get by user email
     app.get("/user-reviews", verifyFirebaseToken, async (req, res) => {
-      const userEmail = req.query.email;
-      const query = { userEmail: userEmail };
+      const email = req.query.email;
+      const query = { userEmail: email };
       const result = await reviewsCollection
         .find(query)
         .sort({ reviewDate: -1 })
         .toArray();
       res.send(result);
     });
-
     //delete
     app.delete("/reviews/:id", verifyFirebaseToken, async (req, res) => {
       const id = req.params.id;
@@ -95,8 +94,29 @@ async function run() {
       const result = await reviewsCollection.deleteOne(query);
       res.send(result);
     });
-
-
+    //update
+    app.patch("/reviews/:id", verifyFirebaseToken, async (req, res) => {
+      const id = req.params.id;
+      const updatedData = req.body;
+      const query = { _id: new ObjectId(id) };
+      const update = {
+        $set: {
+          reviewComment: updatedData.reviewComment,
+          ratingPoint: updatedData.ratingPoint,
+          reviewDate: new Date(),
+        },
+      };
+      const result = await reviewsCollection.updateOne(query, update);
+      res.send(result);
+    });
+    //all reviews
+    app.get("/all-reviews", verifyFirebaseToken, async (req, res) => {
+      const result = await reviewsCollection
+        .find()
+        .sort({ reviewDate: -1 })
+        .toArray();
+      res.send(result);
+    }); 
 
     //============================ Scholarship related API ==================================
     //post
