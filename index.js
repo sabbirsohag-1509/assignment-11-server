@@ -107,7 +107,7 @@ async function run() {
       res.send(result);
     });
 
-    // Application related API
+    // Application related API ===================================================================
     //post
     app.post("/applications", async (req, res) => {
       const applicationData = req.body;
@@ -118,7 +118,7 @@ async function run() {
       const result = await applicationsCollection.insertOne(applicationData);
       res.send(result);
     });
-    //get
+    //get by user email
     app.get("/applications", verifyFirebaseToken, async (req, res) => {
       const userEmail = req.query.email;
       const query = { userEmail: userEmail };
@@ -141,6 +141,28 @@ async function run() {
       const result = await applicationsCollection.deleteOne(query);
       res.send(result);
     });
+    // Get single application by id
+    app.get("/applications/:id", verifyFirebaseToken, async (req, res) => {
+      const { id } = req.params;
+
+      try {
+        const application = await applicationsCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        if (!application) {
+          return res.status(404).send({ message: "Application not found" });
+        }
+
+        res.send(application);
+      } catch (error) {
+        res.status(500).send({ message: "Server error", error });
+      }
+    });
+
+
+
+
 
 
 
@@ -173,12 +195,13 @@ async function run() {
         mode: "payment",
         customer_email: paymentInfo?.userEmail,
         metadata: {
-          applicationId: paymentInfo?.scholarshipId,
+          applicationId: paymentInfo?.applicationId,
           userEmail: paymentInfo?.userEmail,
           userName: paymentInfo?.userName,
         },
-        success_url: `${process.env.CLIENT_DOMAIN}/dashboard/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${process.env.CLIENT_DOMAIN}/dashboard/payment-cancelled?applicationId=${paymentInfo.scholarshipId}&error=Payment+was+declined`,
+        success_url: `${process.env.CLIENT_DOMAIN}/dashboard/payment-success?session_id={CHECKOUT_SESSION_ID}&applicationId=${paymentInfo.applicationId}`,
+
+        cancel_url: `${process.env.CLIENT_DOMAIN}/dashboard/payment-cancelled?applicationId=${paymentInfo.applicationId}&error=Payment+was+declined`,
       });
       res.send({ url: session.url });
     });
@@ -188,13 +211,13 @@ async function run() {
       const sessionId = req.query.session_id;
       const session = await stripe.checkout.sessions.retrieve(sessionId);
 
-      console.log("Stripe session:", session);
+      // console.log("Stripe session:", session);
 
       if (session.payment_status === "paid") {
         const applicationId = session.metadata.applicationId;
         // console.log("Application ID:", applicationId);
 
-        const query = { scholarshipId: applicationId };
+        const query = { _id: new ObjectId(applicationId) };
         const update = {
           $set: {
             paymentStatus: "paid",
@@ -211,6 +234,14 @@ async function run() {
       }
       res.send({ success: false, message: "Payment not completed" });
     });
+
+
+
+
+
+
+
+
 
 
 
