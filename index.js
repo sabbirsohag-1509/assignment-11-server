@@ -55,8 +55,50 @@ async function run() {
     const myDB = client.db("scholarStreamDB");
     const scholarshipsCollection = myDB.collection("scholarships");
     const applicationsCollection = myDB.collection("applications");
+    const reviewsCollection = myDB.collection("reviews");
+    const usersCollection = myDB.collection("users");
 
-    // Scholarship related API
+    //============================ Users related API =======================================
+
+    //============================ Review related API ======================================
+    //post
+    app.post("/reviews", async (req, res) => {
+      const reviewData = req.body;
+      reviewData.reviewDate = new Date();
+      const result = await reviewsCollection.insertOne(reviewData);
+      res.send(result);
+    });
+    //get
+    app.get("/reviews", async (req, res) => {
+      const { scholarshipId } = req.query;
+      const reviews = await reviewsCollection
+        .find({ scholarshipId })
+        .sort({ reviewDate: -1 })
+        .toArray();
+      res.json(reviews);
+    });
+    //get by user email
+    app.get("/user-reviews", verifyFirebaseToken, async (req, res) => {
+      const userEmail = req.query.email;
+      const query = { userEmail: userEmail };
+      const result = await reviewsCollection
+        .find(query)
+        .sort({ reviewDate: -1 })
+        .toArray();
+      res.send(result);
+    });
+
+    //delete
+    app.delete("/reviews/:id", verifyFirebaseToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await reviewsCollection.deleteOne(query);
+      res.send(result);
+    });
+
+
+
+    //============================ Scholarship related API ==================================
     //post
     app.post("/scholarships", async (req, res) => {
       const formDataInfo = req.body;
@@ -107,7 +149,7 @@ async function run() {
       res.send(result);
     });
 
-    // Application related API ===================================================================
+    //============================ Application related API ====================================
     //post
     app.post("/applications", async (req, res) => {
       const applicationData = req.body;
@@ -159,20 +201,45 @@ async function run() {
         res.status(500).send({ message: "Server error", error });
       }
     });
+    //patch for application phone & address
+    app.patch("/applications/:id", verifyFirebaseToken, async (req, res) => {
+      const id = req.params.id;
+      const updatedData = req.body;
+      const query = { _id: new ObjectId(id) };
+      const update = {
+        $set: {
+          phone: updatedData.phone,
+          address: updatedData.address,
+        },
+      };
+      const result = await applicationsCollection.updateOne(query, update);
+      res.send(result);
+    });
 
+    //patch application by MODERATOR
+    app.patch(
+      "/applications/moderator/:id",
+      verifyFirebaseToken,
+      async (req, res) => {
+        const id = req.params.id;
+        const updatedData = req.body;
+        const query = { _id: new ObjectId(id) };
 
+        const update = {
+          $set: {
+            ...(updatedData.applicationStatus && {
+              applicationStatus: updatedData.applicationStatus,
+            }),
+            ...(updatedData.feedback && { feedback: updatedData.feedback }),
+          },
+        };
 
+        const result = await applicationsCollection.updateOne(query, update);
+        res.send(result);
+      }
+    );
 
-
-
-
-
-
-
-
-
-
-
+    //=================================PAYMENT==================================================
     //Payments Related API
     app.post("/create-checkout-session", async (req, res) => {
       const paymentInfo = req.body;
@@ -187,6 +254,7 @@ async function run() {
                 name: paymentInfo?.universityName,
                 description: paymentInfo?.scholarshipName,
               },
+
               unit_amount: paymentInfo?.applicationFees * 100,
             },
             quantity: 1,
@@ -234,25 +302,7 @@ async function run() {
       }
       res.send({ success: false, message: "Payment not completed" });
     });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    //================================= End of PAYMENT ==========================================
 
     await client.db("admin").command({ ping: 1 });
     console.log(
