@@ -79,6 +79,14 @@ async function run() {
       res.send(result);
     });
 
+    //get single user info by email
+    app.get("/users/:email/role", verifyFirebaseToken, async (req, res) => {
+      const email = req.params.email;
+      const user = await usersCollection.findOne({ email });
+      if (!user) return res.status(404).send({ role: "Student" });
+      res.send({ role: user.role });
+    });
+
     // Update user role
     app.patch("/users/:id/role", verifyFirebaseToken, async (req, res) => {
       const userId = req.params.id;
@@ -124,13 +132,6 @@ async function run() {
         res.status(500).send({ message: "Internal server error" });
       }
     });
-
-
-
-
-
-
-    
 
     //============================ Review related API ======================================
     //post
