@@ -59,6 +59,78 @@ async function run() {
     const usersCollection = myDB.collection("users");
 
     //============================ Users related API =======================================
+    //post user info
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+
+      const existingUser = await usersCollection.findOne({ email: user.email });
+      if (existingUser) {
+        return res.send({ message: "User already exists", insertedId: null });
+      }
+      user.role = "Student";
+      user.registrationDate = new Date();
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
+
+    //get user info
+    app.get("/users", verifyFirebaseToken, async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
+
+    // Update user role
+    app.patch("/users/:id/role", verifyFirebaseToken, async (req, res) => {
+      const userId = req.params.id;
+      const { role } = req.body;
+
+      if (!role) {
+        return res.status(400).send({ message: "Role is required" });
+      }
+
+      try {
+        const result = await usersCollection.updateOne(
+          { _id: new ObjectId(userId) },
+          { $set: { role: role } }
+        );
+
+        if (result.modifiedCount === 1) {
+          res.send({ message: "User role updated successfully" });
+        } else {
+          res.status(404).send({ message: "User not found or role unchanged" });
+        }
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ message: "Internal server error" });
+      }
+    });
+
+    // Delete user
+    app.delete("/users/:id", verifyFirebaseToken, async (req, res) => {
+      const userId = req.params.id;
+
+      try {
+        const result = await usersCollection.deleteOne({
+          _id: new ObjectId(userId),
+        });
+
+        if (result.deletedCount === 1) {
+          res.send({ message: "User deleted successfully" });
+        } else {
+          res.status(404).send({ message: "User not found" });
+        }
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ message: "Internal server error" });
+      }
+    });
+
+
+
+
+
+
+    
 
     //============================ Review related API ======================================
     //post
@@ -116,7 +188,7 @@ async function run() {
         .sort({ reviewDate: -1 })
         .toArray();
       res.send(result);
-    }); 
+    });
 
     //============================ Scholarship related API ==================================
     //post
