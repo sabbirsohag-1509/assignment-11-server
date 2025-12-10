@@ -186,7 +186,7 @@ async function run() {
       res.send(result);
     });
     //delete
-    app.delete("/reviews/:id", verifyFirebaseToken,verifyModerator, async (req, res) => {
+    app.delete("/reviews/:id", verifyFirebaseToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await reviewsCollection.deleteOne(query);
@@ -260,7 +260,7 @@ async function run() {
       res.send(result);
     });
     //delete
-    app.delete("/scholarships/:id", verifyFirebaseToken,verifyAdmin, async (req, res) => {
+    app.delete("/scholarships/:id", verifyFirebaseToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await scholarshipsCollection.deleteOne(query);
