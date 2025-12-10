@@ -58,6 +58,31 @@ async function run() {
     const reviewsCollection = myDB.collection("reviews");
     const usersCollection = myDB.collection("users");
 
+    //============================Middleware to verify admin role================================
+    const verifyAdmin = async (req, res, next) => { 
+      const email = req.decodedEmail;
+      // const query = { email: email };
+      const query = { email };
+      const user = await usersCollection.findOne(query);
+      if (user?.role !== "Admin") {
+        return res.status(403).send({ message: "Forbidden access" });
+      }
+      next();
+    }
+
+    //===========================Middleware to Verify Moderator role========================
+    const verifyModerator = async (req, res, next) => {
+      const email = req.decodedEmail;
+      const query = { email };
+      const user = await usersCollection.findOne(query);
+      if (user?.role !== "Moderator") {
+        return res.status(403).send({ message: "Forbidden access" });
+      }
+      next();
+    };
+
+
+
     //============================ Users related API =======================================
     //post user info
     app.post("/users", async (req, res) => {
@@ -88,7 +113,7 @@ async function run() {
     });
 
     // Update user role
-    app.patch("/users/:id/role", verifyFirebaseToken, async (req, res) => {
+    app.patch("/users/:id/role", verifyFirebaseToken,verifyAdmin, async (req, res) => {
       const userId = req.params.id;
       const { role } = req.body;
 
@@ -114,7 +139,7 @@ async function run() {
     });
 
     // Delete user
-    app.delete("/users/:id", verifyFirebaseToken, async (req, res) => {
+    app.delete("/users/:id", verifyFirebaseToken, verifyAdmin, async (req, res) => {
       const userId = req.params.id;
 
       try {
@@ -161,7 +186,7 @@ async function run() {
       res.send(result);
     });
     //delete
-    app.delete("/reviews/:id", verifyFirebaseToken, async (req, res) => {
+    app.delete("/reviews/:id", verifyFirebaseToken,verifyModerator, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await reviewsCollection.deleteOne(query);
@@ -193,7 +218,7 @@ async function run() {
 
     //============================ Scholarship related API ==================================
     //post
-    app.post("/scholarships", async (req, res) => {
+    app.post("/scholarships",verifyFirebaseToken,verifyAdmin, async (req, res) => {
       const formDataInfo = req.body;
       formDataInfo.scholarshipPostDate = new Date();
       const result = await scholarshipsCollection.insertOne(formDataInfo);
@@ -223,7 +248,7 @@ async function run() {
       res.send(result);
     });
     //update
-    app.patch("/scholarships/:id", verifyFirebaseToken, async (req, res) => {
+    app.patch("/scholarships/:id", verifyFirebaseToken,verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const formData = req.body;
       // console.log(formData);
@@ -235,7 +260,7 @@ async function run() {
       res.send(result);
     });
     //delete
-    app.delete("/scholarships/:id", verifyFirebaseToken, async (req, res) => {
+    app.delete("/scholarships/:id", verifyFirebaseToken,verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await scholarshipsCollection.deleteOne(query);
@@ -308,11 +333,11 @@ async function run() {
       const result = await applicationsCollection.updateOne(query, update);
       res.send(result);
     });
-
     //patch application by MODERATOR
     app.patch(
       "/applications/moderator/:id",
       verifyFirebaseToken,
+      verifyModerator,
       async (req, res) => {
         const id = req.params.id;
         const updatedData = req.body;
