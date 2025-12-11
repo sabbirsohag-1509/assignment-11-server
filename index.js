@@ -265,6 +265,13 @@ async function run() {
         .toArray();
       res.send(result);
     });
+    app.get("/all-reviews-home", async (req, res) => {
+      const result = await reviewsCollection
+        .find()
+        .sort({ reviewDate: -1 })
+        .toArray();
+      res.send(result);
+    });
 
     //============================ Scholarship related API ==================================
     //post
