@@ -59,7 +59,7 @@ async function run() {
     const usersCollection = myDB.collection("users");
 
     //============================Middleware to verify admin role================================
-    const verifyAdmin = async (req, res, next) => { 
+    const verifyAdmin = async (req, res, next) => {
       const email = req.decodedEmail;
       // const query = { email: email };
       const query = { email };
@@ -68,7 +68,7 @@ async function run() {
         return res.status(403).send({ message: "Forbidden access" });
       }
       next();
-    }
+    };
 
     //===========================Middleware to Verify Moderator role========================
     const verifyModerator = async (req, res, next) => {
@@ -81,7 +81,45 @@ async function run() {
       next();
     };
 
+    //============================ Analytics Related API ========================================
+    // All Users Count
+    app.get(
+      "/analytics/all-users",
+      verifyFirebaseToken,
+      verifyAdmin,
+      async (req, res) => {
+        const count = await usersCollection.countDocuments();
+        res.send({ totalUsers: count });
+      }
+    );
+    // All Scholarships Count
+    app.get(
+      "/analytics/all-scholarships",
+      verifyFirebaseToken,
+      verifyAdmin,
+      async (req, res) => {
+        const count = await scholarshipsCollection.countDocuments();
+        res.send({ totalScholarships: count });
+      }
+    );
+    //Total Fees Collected
+    app.get(
+      "/analytics/total-fees",
+      verifyFirebaseToken,
+      verifyAdmin,
+      async (req, res) => {
+        const fees = await applicationsCollection
+          .aggregate([
+            { $match: { paymentStatus: "paid" } },
+            { $group: { _id: null, totalFees: { $sum: "$applicationFees" } } },
+          ])
+          .toArray();
 
+        res.send({
+          totalFees: fees[0]?.totalFees || 0,
+        });
+      }
+    );
 
     //============================ Users related API =======================================
     //post user info
@@ -113,50 +151,62 @@ async function run() {
     });
 
     // Update user role
-    app.patch("/users/:id/role", verifyFirebaseToken,verifyAdmin, async (req, res) => {
-      const userId = req.params.id;
-      const { role } = req.body;
+    app.patch(
+      "/users/:id/role",
+      verifyFirebaseToken,
+      verifyAdmin,
+      async (req, res) => {
+        const userId = req.params.id;
+        const { role } = req.body;
 
-      if (!role) {
-        return res.status(400).send({ message: "Role is required" });
-      }
-
-      try {
-        const result = await usersCollection.updateOne(
-          { _id: new ObjectId(userId) },
-          { $set: { role: role } }
-        );
-
-        if (result.modifiedCount === 1) {
-          res.send({ message: "User role updated successfully" });
-        } else {
-          res.status(404).send({ message: "User not found or role unchanged" });
+        if (!role) {
+          return res.status(400).send({ message: "Role is required" });
         }
-      } catch (err) {
-        console.error(err);
-        res.status(500).send({ message: "Internal server error" });
+
+        try {
+          const result = await usersCollection.updateOne(
+            { _id: new ObjectId(userId) },
+            { $set: { role: role } }
+          );
+
+          if (result.modifiedCount === 1) {
+            res.send({ message: "User role updated successfully" });
+          } else {
+            res
+              .status(404)
+              .send({ message: "User not found or role unchanged" });
+          }
+        } catch (err) {
+          console.error(err);
+          res.status(500).send({ message: "Internal server error" });
+        }
       }
-    });
+    );
 
     // Delete user
-    app.delete("/users/:id", verifyFirebaseToken, verifyAdmin, async (req, res) => {
-      const userId = req.params.id;
+    app.delete(
+      "/users/:id",
+      verifyFirebaseToken,
+      verifyAdmin,
+      async (req, res) => {
+        const userId = req.params.id;
 
-      try {
-        const result = await usersCollection.deleteOne({
-          _id: new ObjectId(userId),
-        });
+        try {
+          const result = await usersCollection.deleteOne({
+            _id: new ObjectId(userId),
+          });
 
-        if (result.deletedCount === 1) {
-          res.send({ message: "User deleted successfully" });
-        } else {
-          res.status(404).send({ message: "User not found" });
+          if (result.deletedCount === 1) {
+            res.send({ message: "User deleted successfully" });
+          } else {
+            res.status(404).send({ message: "User not found" });
+          }
+        } catch (err) {
+          console.error(err);
+          res.status(500).send({ message: "Internal server error" });
         }
-      } catch (err) {
-        console.error(err);
-        res.status(500).send({ message: "Internal server error" });
       }
-    });
+    );
 
     //============================ Review related API ======================================
     //post
@@ -218,14 +268,19 @@ async function run() {
 
     //============================ Scholarship related API ==================================
     //post
-    app.post("/scholarships",verifyFirebaseToken,verifyAdmin, async (req, res) => {
-      const formDataInfo = req.body;
-      formDataInfo.scholarshipPostDate = new Date();
-      const result = await scholarshipsCollection.insertOne(formDataInfo);
-      res.send(result);
-    });
+    app.post(
+      "/scholarships",
+      verifyFirebaseToken,
+      verifyAdmin,
+      async (req, res) => {
+        const formDataInfo = req.body;
+        formDataInfo.scholarshipPostDate = new Date();
+        const result = await scholarshipsCollection.insertOne(formDataInfo);
+        res.send(result);
+      }
+    );
     //get
-    app.get("/scholarships", verifyFirebaseToken, async (req, res) => {
+    app.get("/scholarships", async (req, res) => {
       const result = await scholarshipsCollection
         .find()
         .sort({ scholarshipPostDate: -1 })
@@ -233,7 +288,7 @@ async function run() {
         .toArray();
       res.send(result);
     });
-    app.get("/all-scholarships", verifyFirebaseToken, async (req, res) => {
+    app.get("/all-scholarships", async (req, res) => {
       const result = await scholarshipsCollection
         .find()
         .sort({ scholarshipPostDate: -1 })
@@ -241,24 +296,29 @@ async function run() {
       res.send(result);
     });
     //findOne
-    app.get("/scholarships/:id", verifyFirebaseToken, async (req, res) => {
+    app.get("/scholarships/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await scholarshipsCollection.findOne(query);
       res.send(result);
     });
     //update
-    app.patch("/scholarships/:id", verifyFirebaseToken,verifyAdmin, async (req, res) => {
-      const id = req.params.id;
-      const formData = req.body;
-      // console.log(formData);
-      const query = { _id: new ObjectId(id) };
-      const update = {
-        $set: formData,
-      };
-      const result = await scholarshipsCollection.updateOne(query, update);
-      res.send(result);
-    });
+    app.patch(
+      "/scholarships/:id",
+      verifyFirebaseToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const formData = req.body;
+        // console.log(formData);
+        const query = { _id: new ObjectId(id) };
+        const update = {
+          $set: formData,
+        };
+        const result = await scholarshipsCollection.updateOne(query, update);
+        res.send(result);
+      }
+    );
     //delete
     app.delete("/scholarships/:id", verifyFirebaseToken, async (req, res) => {
       const id = req.params.id;
