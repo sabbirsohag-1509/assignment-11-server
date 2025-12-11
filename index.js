@@ -289,8 +289,25 @@ async function run() {
       res.send(result);
     });
     app.get("/all-scholarships", async (req, res) => {
+      const search = req.query.search || "";
+      const category = req.query.category || "";
+
+      const query = {};
+
+      if (search) {
+        query.$or = [
+          { scholarshipName: { $regex: search, $options: "i" } },
+          { universityName: { $regex: search, $options: "i" } },
+          { degree: { $regex: search, $options: "i" } },
+        ];
+      }
+
+      if (category) {
+        query.scholarshipCategory = category;
+      }
+
       const result = await scholarshipsCollection
-        .find()
+        .find(query)
         .sort({ scholarshipPostDate: -1 })
         .toArray();
       res.send(result);
