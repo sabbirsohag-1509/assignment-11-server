@@ -296,7 +296,7 @@ async function run() {
       const result = await scholarshipsCollection
         .find()
         .sort({ scholarshipPostDate: -1 })
-        .limit(6)
+        .limit(8)
         .toArray();
       res.send(result);
     });
